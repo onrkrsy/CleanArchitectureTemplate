@@ -1,0 +1,55 @@
+    /// <summary>
+    /// {{Description}}
+    /// </summary>
+    {{#AddCaching}}
+    [Cache("{{CacheKeyPattern}}", ExpirationMinutes = 30{{#Parameters}}, KeyParameters = new[] { {{#.}}"{{Name}}"{{#HasNext}}, {{/HasNext}}{{/.}}{{/Parameters}})]
+    {{/AddCaching}}
+    {{#AddLogging}}
+    [Log(LogLevel.Information)]
+    {{/AddLogging}}
+    {{#AddAudit}}
+    [LogAudit("{{HttpMethod}}", "{{EntityName}}")]
+    {{/AddAudit}}
+    public async Task<{{#ReturnTypeTemplate}}{{ReturnTypeTemplate}}{{/ReturnTypeTemplate}}> {{Name}}Async({{#Parameters}}{{Type}} {{Name}}{{#DefaultValue}} = {{DefaultValue}}{{/DefaultValue}}{{#HasNext}}, {{/HasNext}}{{/Parameters}}{{#AddPagination}}{{#Parameters}}, {{/Parameters}}int pageNumber = 1, int pageSize = 10{{/AddPagination}})
+    {
+        {{#ReturnType}}
+        {{#IsVoid}}
+        // TODO: Implement {{Name}} logic
+        // Example: await _unitOfWork.{{EntityNamePlural}}.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+        await _unitOfWork.SaveChangesAsync();
+        {{/IsVoid}}
+        {{#IsSingle}}
+        // TODO: Implement {{Name}} logic
+        var entity = await _unitOfWork.{{EntityNamePlural}}.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+        
+        if (entity == null)
+            return Result<{{EntityName}}ResponseDto>.Failure("{{EntityName}} not found");
+            
+        var dto = _mapper.Map<{{EntityName}}ResponseDto>(entity);
+        return Result<{{EntityName}}ResponseDto>.Success(dto);
+        {{/IsSingle}}
+        {{#IsList}}
+        // TODO: Implement {{Name}} logic
+        {{#AddPagination}}
+        var entities = await _unitOfWork.{{EntityNamePlural}}.{{Name}}Async({{#Parameters}}{{Name}}, {{/Parameters}}pageNumber, pageSize);
+        var totalCount = await _unitOfWork.{{EntityNamePlural}}.{{Name}}CountAsync({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+        
+        var dtos = _mapper.Map<IEnumerable<{{EntityName}}ResponseDto>>(entities);
+        var pagedResult = new PagedResult<{{EntityName}}ResponseDto>
+        {
+            Items = dtos,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
+        
+        return Result<PagedResult<{{EntityName}}ResponseDto>>.Success(pagedResult);
+        {{/AddPagination}}
+        {{^AddPagination}}
+        var entities = await _unitOfWork.{{EntityNamePlural}}.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+        var dtos = _mapper.Map<IEnumerable<{{EntityName}}ResponseDto>>(entities);
+        return Result<IEnumerable<{{EntityName}}ResponseDto>>.Success(dtos);
+        {{/AddPagination}}
+        {{/IsList}}
+        {{/ReturnType}}
+    }

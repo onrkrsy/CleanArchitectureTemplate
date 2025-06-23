@@ -1,0 +1,5 @@
+// Register {{EntityName}} services
+builder.Services.AddScoped<I{{EntityName}}Repository, {{EntityName}}Repository>();
+{{#HasService}}
+builder.Services.AddFullInterception<I{{EntityName}}Service, {{EntityName}}Service>();
+{{/HasService}}

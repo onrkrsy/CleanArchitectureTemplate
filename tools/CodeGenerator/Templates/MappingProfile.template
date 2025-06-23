@@ -1,0 +1,21 @@
+using AutoMapper;
+using {{ApplicationNamespace}}.DTOs;
+using {{DomainNamespace}};
+
+namespace {{APINamespace}}.Mappings;
+
+public class {{EntityName}}MappingProfile : Profile
+{
+    public {{EntityName}}MappingProfile()
+    {
+        // Entity to Response DTO
+        CreateMap<{{EntityName}}, {{EntityName}}ResponseDto>();
+
+        // Create DTO to Entity
+        CreateMap<Create{{EntityName}}Dto, {{EntityName}}>();
+
+        // Update DTO to Entity
+        CreateMap<Update{{EntityName}}Dto, {{EntityName}}>()
+            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+    }
+}

@@ -1,0 +1,81 @@
+using {{DomainNamespace}};
+using {{ApplicationNamespace}}.Interfaces;
+using Common.Repositories;
+using Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace {{InfrastructureNamespace}}.Repositories;
+
+public class {{EntityName}}Repository : Repository<{{EntityName}}>, I{{EntityName}}Repository
+{
+    public {{EntityName}}Repository(ApplicationDbContext context) : base(context)
+    {
+    }
+
+    public async Task<{{EntityName}}?> GetByIdWithDetailsAsync({{IdType}} id)
+    {
+        return await _dbSet
+{{#NavigationProperties}}
+            .Include(x => x.{{PropertyName}})
+{{/NavigationProperties}}
+            .FirstOrDefaultAsync(x => x.{{IdProperty}} == id);
+    }
+
+    public async Task<IEnumerable<{{EntityName}}>> GetAllWithDetailsAsync()
+    {
+        return await _dbSet
+{{#NavigationProperties}}
+            .Include(x => x.{{PropertyName}})
+{{/NavigationProperties}}
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+{{#StringProperties}}
+    public async Task<IEnumerable<{{EntityName}}>> GetBy{{PropertyName}}Async(string {{PropertyNameCamel}})
+    {
+        return await _dbSet
+            .Where(x => x.{{PropertyName}}.Contains({{PropertyNameCamel}}))
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+{{/StringProperties}}
+{{#HasPagination}}
+    public async Task<(IEnumerable<{{EntityName}}> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber, 
+        int pageSize, 
+        string? searchTerm = null)
+    {
+        var query = _dbSet.AsQueryable();
+
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            query = query.Where(x => 
+{{#StringProperties}}
+                x.{{PropertyName}}.Contains(searchTerm){{#unless @last}} ||{{/unless}}
+{{/StringProperties}}
+            );
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .AsNoTracking()
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+{{/HasPagination}}
+
+{{#HasAuditFields}}
+    public async Task<IEnumerable<{{EntityName}}>> GetActiveAsync()
+    {
+        return await _dbSet
+            .Where(x => !x.IsDeleted)
+            .AsNoTracking()
+            .ToListAsync();
+    }
+{{/HasAuditFields}}
+}

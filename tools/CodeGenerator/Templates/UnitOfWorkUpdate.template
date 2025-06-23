@@ -1,0 +1,1 @@
+    I{{EntityName}}Repository {{EntityNamePlural}} { get; }

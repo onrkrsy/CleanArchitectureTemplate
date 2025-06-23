@@ -1,0 +1,33 @@
+{
+  "CodeGeneration": {
+    "ProjectRoot": "./src",
+    "Namespace": {
+      "Domain": "YourProject.Domain.Entities",
+      "Application": "YourProject.Application",
+      "Infrastructure": "YourProject.Infrastructure", 
+      "API": "YourProject.API.Controllers"
+    },
+    "Features": {
+      "GenerateRepository": true,
+      "GenerateService": true,
+      "GenerateController": true,
+      "GenerateDTOs": true,
+      "GenerateMapper": true,
+      "AddCaching": true,
+      "AddLogging": true,
+      "AddValidation": true,
+      "AddAudit": true
+    },
+    "CustomActions": [
+      {
+        "Name": "GetActive",
+        "Description": "Get active entities",
+        "HttpMethod": "GET",
+        "Route": "active",
+        "ReturnType": "List",
+        "AddCaching": true,
+        "CacheKeyPattern": "{{EntityNameLower}}_active"
+      }
+    ]
+  }
+}

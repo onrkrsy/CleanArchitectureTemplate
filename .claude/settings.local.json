@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet new:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(dotnet sln add:*)",
+      "Bash(dotnet add:*)",
+      "Bash(cp:*)",
+      "Bash(dotnet remove:*)",
+      "Bash(dotnet build)",
+      "Bash(dotnet clean:*)",
+      "Bash(sudo pkill:*)",
+      "Bash(dotnet run)",
+      "Bash(dotnet run:*)",
+      "Bash(ls:*)",
+      "Bash(chmod:*)",
+      "Bash(./generate.sh:*)",
+      "Bash(dos2unix:*)",
+      "Bash(true)",
+      "Bash(bash:*)",
+      "Bash(dotnet build:*)",
+      "Bash(grep:*)",
+      "Bash(dotnet pack:*)",
+      "Bash(dotnet tool install:*)",
+      "Bash(ca-generator:*)",
+      "Bash(dotnet tool uninstall:*)"
+    ],
+    "deny": []
+  }
+}

@@ -1,0 +1,309 @@
+using {{ApplicationNamespace}}.DTOs;
+using {{ApplicationNamespace}}.Interfaces;
+using {{ApplicationNamespace}}.Services;
+using AutoMapper;
+{{#HasCaching}}
+using Common.Attributes;
+{{/HasCaching}}
+using Common.Constants;
+using Common.Models;
+using {{DomainNamespace}};
+using Microsoft.Extensions.Logging;
+
+namespace {{InfrastructureNamespace}}.Services;
+
+public class {{EntityName}}Service : I{{EntityName}}Service
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
+    private readonly ILogger<{{EntityName}}Service> _logger;
+
+    public {{EntityName}}Service(
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
+        ILogger<{{EntityName}}Service> logger)
+    {
+        _unitOfWork = unitOfWork;
+        _mapper = mapper;
+        _logger = logger;
+    }
+
+{{#HasCaching}}
+    [Cache("{{EntityNamePluralLower}}", ExpirationMinutes = 10)]
+{{/HasCaching}}
+{{#HasLogging}}
+    [Log(LogLevel.Information, CustomMessage = "Fetching all {{EntityNamePluralLower}}")]
+{{/HasLogging}}
+    public async Task<Result<IEnumerable<{{EntityName}}ResponseDto>>> GetAll{{EntityNamePlural}}Async()
+    {
+        try
+        {
+            _logger.LogInformation("Fetching all {{EntityNamePluralLower}}");
+            var {{EntityNamePluralCamel}} = await _unitOfWork.{{EntityNamePlural}}.GetAllAsync();
+            var {{EntityNamePluralCamel}}Dtos = _mapper.Map<IEnumerable<{{EntityName}}ResponseDto>>({{EntityNamePluralCamel}});
+            return Result<IEnumerable<{{EntityName}}ResponseDto>>.Success({{EntityNamePluralCamel}}Dtos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while fetching {{EntityNamePluralLower}}");
+            return Result<IEnumerable<{{EntityName}}ResponseDto>>.Failure(
+                AppConstants.ResponseMessages.InternalServerError);
+        }
+    }
+
+{{#HasCaching}}
+    [Cache("{{EntityNameLower}}", KeyParameters = new[] { "id" }, ExpirationMinutes = 15)]
+{{/HasCaching}}
+{{#HasLogging}}
+    [Log(LogLevel.Information, LogParameters = true)]
+    [LogPerformance(500)]
+{{/HasLogging}}
+    public async Task<Result<{{EntityName}}ResponseDto>> Get{{EntityName}}ByIdAsync({{IdType}} id)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching {{EntityNameLower}} with ID: {Id}", id);
+            var {{EntityNameCamel}} = await _unitOfWork.{{EntityNamePlural}}.GetByIdAsync(id);
+            
+            if ({{EntityNameCamel}} == null)
+            {
+                _logger.LogWarning("{{EntityName}} with ID {Id} not found", id);
+                return Result<{{EntityName}}ResponseDto>.Failure("{{EntityName}} not found");
+            }
+
+            var {{EntityNameCamel}}Dto = _mapper.Map<{{EntityName}}ResponseDto>({{EntityNameCamel}});
+            return Result<{{EntityName}}ResponseDto>.Success({{EntityNameCamel}}Dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while fetching {{EntityNameLower}} with ID: {Id}", id);
+            return Result<{{EntityName}}ResponseDto>.Failure(
+                AppConstants.ResponseMessages.InternalServerError);
+        }
+    }
+
+{{#HasCaching}}
+    [CacheEvict(KeyPatterns = new[] { "{{EntityNamePluralLower}}", "{{EntityNameLower}}_*" })]
+{{/HasCaching}}
+{{#HasLogging}}
+    [Log(LogLevel.Warning)]
+{{/HasLogging}}
+{{#HasAudit}}
+    [LogAudit("CREATE", "{{EntityName}}", AuditParameters = new[] { "{{#StringProperties}}{{PropertyName}}{{#unless @last}}", "{{/unless}}{{/StringProperties}}" })]
+{{/HasAudit}}
+    public async Task<Result<{{EntityName}}ResponseDto>> Create{{EntityName}}Async(Create{{EntityName}}Dto create{{EntityName}}Dto)
+    {
+        try
+        {
+            _logger.LogInformation("Creating new {{EntityNameLower}}");
+
+            var {{EntityNameCamel}} = _mapper.Map<{{EntityName}}>(create{{EntityName}}Dto);
+{{#HasAuditFields}}
+            {{EntityNameCamel}}.CreatedAt = DateTime.UtcNow;
+            {{EntityNameCamel}}.UpdatedAt = DateTime.UtcNow;
+{{/HasAuditFields}}
+
+            await _unitOfWork.{{EntityNamePlural}}.AddAsync({{EntityNameCamel}});
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("{{EntityName}} created successfully with ID: {Id}", {{EntityNameCamel}}.{{IdProperty}});
+
+            var {{EntityNameCamel}}Dto = _mapper.Map<{{EntityName}}ResponseDto>({{EntityNameCamel}});
+            return Result<{{EntityName}}ResponseDto>.Success({{EntityNameCamel}}Dto, AppConstants.ResponseMessages.Created);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while creating {{EntityNameLower}}");
+            return Result<{{EntityName}}ResponseDto>.Failure(
+                AppConstants.ResponseMessages.InternalServerError);
+        }
+    }
+
+{{#HasCaching}}
+    [CacheUpdate("{{EntityNameLower}}", KeyParameters = new[] { "id" })]
+    [CacheEvict(KeyPatterns = new[] { "{{EntityNamePluralLower}}" })]
+{{/HasCaching}}
+{{#HasLogging}}
+    [Log(LogLevel.Information, LogParameters = true)]
+{{/HasLogging}}
+{{#HasAudit}}
+    [LogAudit("UPDATE", "{{EntityName}}", AuditParameters = new[] { "id" })]
+{{/HasAudit}}
+    public async Task<Result<{{EntityName}}ResponseDto>> Update{{EntityName}}Async({{IdType}} id, Update{{EntityName}}Dto update{{EntityName}}Dto)
+    {
+        try
+        {
+            _logger.LogInformation("Updating {{EntityNameLower}} with ID: {Id}", id);
+
+            var {{EntityNameCamel}} = await _unitOfWork.{{EntityNamePlural}}.GetByIdAsync(id);
+            if ({{EntityNameCamel}} == null)
+            {
+                _logger.LogWarning("{{EntityName}} with ID {Id} not found", id);
+                return Result<{{EntityName}}ResponseDto>.Failure("{{EntityName}} not found");
+            }
+
+            _mapper.Map(update{{EntityName}}Dto, {{EntityNameCamel}});
+{{#HasAuditFields}}
+            {{EntityNameCamel}}.UpdatedAt = DateTime.UtcNow;
+{{/HasAuditFields}}
+
+            _unitOfWork.{{EntityNamePlural}}.Update({{EntityNameCamel}});
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("{{EntityName}} with ID {Id} updated successfully", id);
+
+            var {{EntityNameCamel}}Dto = _mapper.Map<{{EntityName}}ResponseDto>({{EntityNameCamel}});
+            return Result<{{EntityName}}ResponseDto>.Success({{EntityNameCamel}}Dto, AppConstants.ResponseMessages.Updated);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while updating {{EntityNameLower}} with ID: {Id}", id);
+            return Result<{{EntityName}}ResponseDto>.Failure(
+                AppConstants.ResponseMessages.InternalServerError);
+        }
+    }
+
+{{#HasCaching}}
+    [CacheEvict(KeyPatterns = new[] { "{{EntityNamePluralLower}}", "{{EntityNameLower}}_{id}" })]
+{{/HasCaching}}
+{{#HasLogging}}
+    [Log(LogLevel.Warning, LogParameters = true)]
+{{/HasLogging}}
+{{#HasAudit}}
+    [LogAudit("DELETE", "{{EntityName}}", AuditParameters = new[] { "id" }, LogIpAddress = true)]
+{{/HasAudit}}
+    public async Task<Result> Delete{{EntityName}}Async({{IdType}} id)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting {{EntityNameLower}} with ID: {Id}", id);
+
+            var {{EntityNameCamel}} = await _unitOfWork.{{EntityNamePlural}}.GetByIdAsync(id);
+            if ({{EntityNameCamel}} == null)
+            {
+                _logger.LogWarning("{{EntityName}} with ID {Id} not found", id);
+                return Result.Failure("{{EntityName}} not found");
+            }
+
+{{#HasAuditFields}}
+            // Soft delete
+            {{EntityNameCamel}}.IsDeleted = true;
+            {{EntityNameCamel}}.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.{{EntityNamePlural}}.Update({{EntityNameCamel}});
+{{else}}
+            _unitOfWork.{{EntityNamePlural}}.Delete({{EntityNameCamel}});
+{{/HasAuditFields}}
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("{{EntityName}} with ID {Id} deleted successfully", id);
+
+            return Result.Success(AppConstants.ResponseMessages.Deleted);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while deleting {{EntityNameLower}} with ID: {Id}", id);
+            return Result.Failure(AppConstants.ResponseMessages.InternalServerError);
+        }
+    }
+
+{{#HasPagination}}
+{{#HasCaching}}
+    [Cache("{{EntityNamePluralLower}}_paged", KeyParameters = new[] { "pageNumber", "pageSize", "searchTerm" }, ExpirationMinutes = 5)]
+{{/HasCaching}}
+    public async Task<Result<(IEnumerable<{{EntityName}}ResponseDto> Items, int TotalCount)>> Get{{EntityNamePlural}}PagedAsync(
+        int pageNumber, 
+        int pageSize, 
+        string? searchTerm = null)
+    {
+        try
+        {
+            _logger.LogInformation("Fetching paged {{EntityNamePluralLower}} - Page: {Page}, Size: {Size}", pageNumber, pageSize);
+            
+            var ({{EntityNamePluralCamel}}, totalCount) = await _unitOfWork.{{EntityNamePlural}}.GetPagedAsync(pageNumber, pageSize, searchTerm);
+            var {{EntityNamePluralCamel}}Dtos = _mapper.Map<IEnumerable<{{EntityName}}ResponseDto>>({{EntityNamePluralCamel}});
+            
+            return Result<(IEnumerable<{{EntityName}}ResponseDto>, int)>.Success(({{EntityNamePluralCamel}}Dtos, totalCount));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while fetching paged {{EntityNamePluralLower}}");
+            return Result<(IEnumerable<{{EntityName}}ResponseDto>, int)>.Failure(
+                AppConstants.ResponseMessages.InternalServerError);
+        }
+    }
+{{/HasPagination}}
+
+{{#CustomActions}}
+    /// <summary>
+    /// {{Description}}
+    /// </summary>
+{{#AddCaching}}
+    [Cache("{{CacheKeyPattern}}", ExpirationMinutes = 30{{#Parameters}}, KeyParameters = new[] { {{#.}}"{{Name}}"{{#HasNext}}, {{/HasNext}}{{/.}}{{/Parameters}})]
+{{/AddCaching}}
+{{#AddLogging}}
+    [Log(LogLevel.Information)]
+{{/AddLogging}}
+{{#AddAudit}}
+    [LogAudit("{{HttpMethod}}", "{{EntityName}}")]
+{{/AddAudit}}
+    public async Task<{{#ReturnTypeTemplate}}{{ReturnTypeTemplate}}{{/ReturnTypeTemplate}}> {{Name}}Async({{#Parameters}}{{Type}} {{Name}}{{#DefaultValue}} = {{DefaultValue}}{{/DefaultValue}}{{#HasNext}}, {{/HasNext}}{{/Parameters}}{{#AddPagination}}{{#Parameters}}, {{/Parameters}}int pageNumber = 1, int pageSize = 10{{/AddPagination}})
+    {
+        try
+        {
+            _logger.LogInformation("Executing {{Name}} for {{EntityName}}");
+            
+{{#ReturnType}}
+{{#IsVoid}}
+            // TODO: Implement {{Name}} logic
+            // Example: await _unitOfWork.{{EntityNamePlural}}.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+            await _unitOfWork.SaveChangesAsync();
+            
+            return Result.Success();
+{{/IsVoid}}
+{{#IsSingle}}
+            // TODO: Implement {{Name}} logic
+            // Example: var entity = await _unitOfWork.{{EntityNamePlural}}.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+            
+            // Placeholder implementation - replace with your logic
+            var entity = await _unitOfWork.{{EntityNamePlural}}.GetByIdAsync(/* your logic here */);
+            
+            if (entity == null)
+                return Result<{{EntityName}}ResponseDto>.Failure("{{EntityName}} not found");
+                
+            var dto = _mapper.Map<{{EntityName}}ResponseDto>(entity);
+            return Result<{{EntityName}}ResponseDto>.Success(dto);
+{{/IsSingle}}
+{{#IsList}}
+{{#AddPagination}}
+            // TODO: Implement {{Name}} logic with pagination
+            // Example: var entities = await _unitOfWork.{{EntityNamePlural}}.{{Name}}Async({{#Parameters}}{{Name}}, {{/Parameters}}pageNumber, pageSize);
+            // Example: var totalCount = await _unitOfWork.{{EntityNamePlural}}.{{Name}}CountAsync({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+            
+            // Placeholder implementation - replace with your logic
+            var entities = await _unitOfWork.{{EntityNamePlural}}.GetPagedAsync(pageNumber, pageSize);
+            var totalCount = entities.Item2;
+            
+            var dtos = _mapper.Map<IEnumerable<{{EntityName}}ResponseDto>>(entities.Item1);
+            return Result<(IEnumerable<{{EntityName}}ResponseDto>, int)>.Success((dtos, totalCount));
+{{/AddPagination}}
+{{^AddPagination}}
+            // TODO: Implement {{Name}} logic
+            // Example: var entities = await _unitOfWork.{{EntityNamePlural}}.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+            
+            // Placeholder implementation - replace with your logic
+            var entities = await _unitOfWork.{{EntityNamePlural}}.GetAllAsync();
+            var dtos = _mapper.Map<IEnumerable<{{EntityName}}ResponseDto>>(entities);
+            return Result<IEnumerable<{{EntityName}}ResponseDto>>.Success(dtos);
+{{/AddPagination}}
+{{/IsList}}
+{{/ReturnType}}
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while executing {{Name}} for {{EntityName}}");
+            return {{#ReturnTypeTemplate}}{{ReturnTypeTemplate}}{{/ReturnTypeTemplate}}.Failure(AppConstants.ResponseMessages.InternalServerError);
+        }
+    }
+
+{{/CustomActions}}
+}

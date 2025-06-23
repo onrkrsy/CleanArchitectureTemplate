@@ -1,0 +1,16 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace {{ApplicationNamespace}}.DTOs;
+
+public class Update{{EntityName}}Dto
+{
+{{#Properties}}
+{{#unless IsId}}
+{{#unless IsAuditField}}
+    {{PropertyValidation}}
+    public {{PropertyType}} {{PropertyName}} { get; set; }{{#if PropertyRequired}} = {{#if IsString}}string.Empty{{else}}default!{{/if}};{{/if}}
+
+{{/unless}}
+{{/unless}}
+{{/Properties}}
+}

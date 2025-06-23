@@ -1,0 +1,26 @@
+using {{ApplicationNamespace}}.DTOs;
+using Common.Models;
+
+namespace {{ApplicationNamespace}}.Services;
+
+public interface I{{EntityName}}Service
+{
+    Task<Result<IEnumerable<{{EntityName}}ResponseDto>>> GetAll{{EntityNamePlural}}Async();
+    Task<Result<{{EntityName}}ResponseDto>> Get{{EntityName}}ByIdAsync({{IdType}} id);
+    Task<Result<{{EntityName}}ResponseDto>> Create{{EntityName}}Async(Create{{EntityName}}Dto create{{EntityName}}Dto);
+    Task<Result<{{EntityName}}ResponseDto>> Update{{EntityName}}Async({{IdType}} id, Update{{EntityName}}Dto update{{EntityName}}Dto);
+    Task<Result> Delete{{EntityName}}Async({{IdType}} id);
+{{#HasPagination}}
+    Task<Result<(IEnumerable<{{EntityName}}ResponseDto> Items, int TotalCount)>> Get{{EntityNamePlural}}PagedAsync(
+        int pageNumber, 
+        int pageSize, 
+        string? searchTerm = null);
+{{/HasPagination}}
+
+{{#CustomActions}}
+    /// <summary>
+    /// {{Description}}
+    /// </summary>
+    Task<{{#ReturnTypeTemplate}}{{ReturnTypeTemplate}}{{/ReturnTypeTemplate}}> {{Name}}Async({{#Parameters}}{{Type}} {{Name}}{{#DefaultValue}} = {{DefaultValue}}{{/DefaultValue}}{{#HasNext}}, {{/HasNext}}{{/Parameters}}{{#AddPagination}}{{#Parameters}}, {{/Parameters}}int pageNumber = 1, int pageSize = 10{{/AddPagination}});
+{{/CustomActions}}
+}

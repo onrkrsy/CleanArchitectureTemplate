@@ -1,0 +1,25 @@
+using {{DomainNamespace}};
+using Common.Interfaces;
+
+namespace {{ApplicationNamespace}}.Interfaces;
+
+public interface I{{EntityName}}Repository : IRepository<{{EntityName}}>
+{
+    Task<{{EntityName}}?> GetByIdWithDetailsAsync({{IdType}} id);
+    Task<IEnumerable<{{EntityName}}>> GetAllWithDetailsAsync();
+    
+{{#StringProperties}}
+    Task<IEnumerable<{{EntityName}}>> GetBy{{PropertyName}}Async(string {{PropertyNameCamel}});
+{{/StringProperties}}
+
+{{#HasPagination}}
+    Task<(IEnumerable<{{EntityName}}> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber, 
+        int pageSize, 
+        string? searchTerm = null);
+{{/HasPagination}}
+
+{{#HasAuditFields}}
+    Task<IEnumerable<{{EntityName}}>> GetActiveAsync();
+{{/HasAuditFields}}
+}

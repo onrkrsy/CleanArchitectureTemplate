@@ -1,0 +1,9 @@
+    private I{{EntityName}}Repository? _{{EntityNamePluralCamel}};
+
+    public I{{EntityName}}Repository {{EntityNamePlural}}
+    {
+        get
+        {
+            return _{{EntityNamePluralCamel}} ??= new {{EntityName}}Repository(_appContext);
+        }
+    }

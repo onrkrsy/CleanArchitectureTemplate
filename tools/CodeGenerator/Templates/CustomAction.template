@@ -1,0 +1,54 @@
+    /// <summary>
+    /// {{Description}}
+    /// </summary>
+    [Http{{HttpMethod}}("{{Route}}")]
+    {{#AddCaching}}
+    [Cache("{{CacheKeyPattern}}", ExpirationMinutes = 30{{#Parameters}}, KeyParameters = new[] { {{#.}}"{{Name}}"{{#HasNext}}, {{/HasNext}}{{/.}}{{/Parameters}})]
+    {{/AddCaching}}
+    {{#AddLogging}}
+    [Log(LogLevel.Information, LogExecutionTime = true)]
+    {{/AddLogging}}
+    {{#AddAudit}}
+    [LogAudit("{{HttpMethod}}", "{{EntityName}}")]
+    {{/AddAudit}}
+    public async Task<ActionResult<{{#ReturnTypeTemplate}}{{ReturnTypeTemplate}}{{/ReturnTypeTemplate}}>> {{Name}}Async({{#Parameters}}{{#FromRoute}}[FromRoute] {{/FromRoute}}{{#FromQuery}}[FromQuery] {{/FromQuery}}{{#FromBody}}[FromBody] {{/FromBody}}{{Type}} {{Name}}{{#DefaultValue}} = {{DefaultValue}}{{/DefaultValue}}{{#HasNext}}, {{/HasNext}}{{/Parameters}})
+    {
+        try
+        {
+            {{#ReturnType}}
+            {{#IsVoid}}
+            await _{{EntityNameCamel}}Service.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+            return NoContent();
+            {{/IsVoid}}
+            {{#IsSingle}}
+            var result = await _{{EntityNameCamel}}Service.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+            
+            if (!result.IsSuccess)
+                return BadRequest(result.ErrorMessage);
+                
+            if (result.Data == null)
+                return NotFound();
+                
+            return Ok(result.Data);
+            {{/IsSingle}}
+            {{#IsList}}
+            {{#AddPagination}}
+            var result = await _{{EntityNameCamel}}Service.{{Name}}Async({{#Parameters}}{{Name}}, {{/Parameters}}pageNumber, pageSize);
+            {{/AddPagination}}
+            {{^AddPagination}}
+            var result = await _{{EntityNameCamel}}Service.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+            {{/AddPagination}}
+            
+            if (!result.IsSuccess)
+                return BadRequest(result.ErrorMessage);
+                
+            return Ok(result.Data);
+            {{/IsList}}
+            {{/ReturnType}}
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in {{Name}} for {{EntityName}}");
+            return StatusCode(500, "An error occurred while processing the request");
+        }
+    }

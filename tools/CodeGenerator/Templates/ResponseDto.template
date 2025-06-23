@@ -1,0 +1,15 @@
+namespace {{ApplicationNamespace}}.DTOs;
+
+public class {{EntityName}}ResponseDto
+{
+{{#Properties}}
+{{#unless IsAuditField}}
+    public {{PropertyType}} {{PropertyName}} { get; set; }{{#if PropertyRequired}} = {{#if IsString}}string.Empty{{else}}default!{{/if}};{{/if}}
+
+{{/unless}}
+{{/Properties}}
+{{#HasAuditFields}}
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+{{/HasAuditFields}}
+}

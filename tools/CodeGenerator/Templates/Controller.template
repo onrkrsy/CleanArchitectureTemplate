@@ -1,0 +1,280 @@
+using {{ApplicationNamespace}}.DTOs;
+using {{ApplicationNamespace}}.Services;
+using Asp.Versioning;
+{{#HasCaching}}
+using Common.Attributes;
+{{/HasCaching}}
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace {{APINamespace}};
+
+[ApiController]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
+{{#HasLogging}}
+[Log(LogLevel.Information, LogExecutionTime = true)]
+{{/HasLogging}}
+public class {{EntityNamePlural}}Controller : ControllerBase
+{
+    private readonly I{{EntityName}}Service _{{EntityNameCamel}}Service;
+    private readonly ILogger<{{EntityNamePlural}}Controller> _logger;
+
+    public {{EntityNamePlural}}Controller(
+        I{{EntityName}}Service {{EntityNameCamel}}Service,
+        ILogger<{{EntityNamePlural}}Controller> logger)
+    {
+        _{{EntityNameCamel}}Service = {{EntityNameCamel}}Service;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Gets all {{EntityNamePluralLower}}
+    /// </summary>
+    /// <returns>List of {{EntityNamePluralLower}}</returns>
+    [HttpGet]
+{{#HasCaching}}
+    [Cache("{{EntityNamePluralLower}}", ExpirationMinutes = 5)]
+{{/HasCaching}}
+    [ProducesResponseType(typeof(IEnumerable<{{EntityName}}ResponseDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<{{EntityName}}ResponseDto>>> Get{{EntityNamePlural}}()
+    {
+        var result = await _{{EntityNameCamel}}Service.GetAll{{EntityNamePlural}}Async();
+        
+        if (!result.IsSuccess)
+            return StatusCode(StatusCodes.Status500InternalServerError, result.Message);
+            
+        return Ok(result.Data);
+    }
+
+{{#HasPagination}}
+    /// <summary>
+    /// Gets paged {{EntityNamePluralLower}}
+    /// </summary>
+    /// <param name="pageNumber">Page number</param>
+    /// <param name="pageSize">Page size</param>
+    /// <param name="searchTerm">Search term</param>
+    /// <returns>Paged list of {{EntityNamePluralLower}}</returns>
+    [HttpGet("paged")]
+{{#HasCaching}}
+    [Cache("{{EntityNamePluralLower}}_paged", KeyParameters = new[] { "pageNumber", "pageSize", "searchTerm" }, ExpirationMinutes = 3)]
+{{/HasCaching}}
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult> Get{{EntityNamePlural}}Paged(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchTerm = null)
+    {
+        var result = await _{{EntityNameCamel}}Service.Get{{EntityNamePlural}}PagedAsync(pageNumber, pageSize, searchTerm);
+        
+        if (!result.IsSuccess)
+            return StatusCode(StatusCodes.Status500InternalServerError, result.Message);
+            
+        return Ok(new 
+        { 
+            Items = result.Data.Items,
+            TotalCount = result.Data.TotalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling((double)result.Data.TotalCount / pageSize)
+        });
+    }
+{{/HasPagination}}
+
+    /// <summary>
+    /// Gets a {{EntityNameLower}} by ID
+    /// </summary>
+    /// <param name="id">{{EntityName}} ID</param>
+    /// <returns>{{EntityName}} details</returns>
+    [HttpGet("{id}")]
+{{#HasCaching}}
+    [Cache("{{EntityNameLower}}", KeyParameters = new[] { "id" }, ExpirationMinutes = 10)]
+{{/HasCaching}}
+{{#HasLogging}}
+    [LogPerformance(SlowExecutionThresholdMs = 500)]
+{{/HasLogging}}
+    [ProducesResponseType(typeof({{EntityName}}ResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<{{EntityName}}ResponseDto>> Get{{EntityName}}({{IdType}} id)
+    {
+        var result = await _{{EntityNameCamel}}Service.Get{{EntityName}}ByIdAsync(id);
+        
+        if (!result.IsSuccess)
+            return NotFound(result.Message);
+            
+        return Ok(result.Data);
+    }
+
+    /// <summary>
+    /// Creates a new {{EntityNameLower}}
+    /// </summary>
+    /// <param name="create{{EntityName}}Dto">{{EntityName}} creation data</param>
+    /// <returns>Created {{EntityNameLower}}</returns>
+    [HttpPost]
+    [Authorize] // Add specific roles as needed: [Authorize(Roles = "Admin")]
+{{#HasCaching}}
+    [CacheEvict(KeyPatterns = new[] { "{{EntityNamePluralLower}}", "{{EntityNamePluralLower}}_paged_*" })]
+{{/HasCaching}}
+{{#HasLogging}}
+    [Log(LogLevel.Warning)]
+{{/HasLogging}}
+{{#HasAudit}}
+    [LogAudit("CREATE", "{{EntityName}}")]
+{{/HasAudit}}
+    [ProducesResponseType(typeof({{EntityName}}ResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<{{EntityName}}ResponseDto>> Create{{EntityName}}([FromBody] Create{{EntityName}}Dto create{{EntityName}}Dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _{{EntityNameCamel}}Service.Create{{EntityName}}Async(create{{EntityName}}Dto);
+        
+        if (!result.IsSuccess)
+            return StatusCode(StatusCodes.Status500InternalServerError, result.Message);
+            
+        return CreatedAtAction(nameof(Get{{EntityName}}), new { id = result.Data!.{{IdProperty}} }, result.Data);
+    }
+
+    /// <summary>
+    /// Updates an existing {{EntityNameLower}}
+    /// </summary>
+    /// <param name="id">{{EntityName}} ID</param>
+    /// <param name="update{{EntityName}}Dto">{{EntityName}} update data</param>
+    /// <returns>Updated {{EntityNameLower}}</returns>
+    [HttpPut("{id}")]
+    [Authorize] // Add specific roles as needed: [Authorize(Roles = "Admin,Manager")]
+{{#HasCaching}}
+    [CacheUpdate("{{EntityNameLower}}", KeyParameters = new[] { "id" })]
+    [CacheEvict(KeyPatterns = new[] { "{{EntityNamePluralLower}}", "{{EntityNamePluralLower}}_paged_*" })]
+{{/HasCaching}}
+{{#HasLogging}}
+    [Log(LogLevel.Information, LogParameters = true)]
+{{/HasLogging}}
+{{#HasAudit}}
+    [LogAudit("UPDATE", "{{EntityName}}", AuditParameters = new[] { "id" })]
+{{/HasAudit}}
+    [ProducesResponseType(typeof({{EntityName}}ResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<{{EntityName}}ResponseDto>> Update{{EntityName}}({{IdType}} id, [FromBody] Update{{EntityName}}Dto update{{EntityName}}Dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _{{EntityNameCamel}}Service.Update{{EntityName}}Async(id, update{{EntityName}}Dto);
+        
+        if (!result.IsSuccess)
+        {
+            if (result.Message?.Contains("not found") == true)
+                return NotFound(result.Message);
+            return StatusCode(StatusCodes.Status500InternalServerError, result.Message);
+        }
+            
+        return Ok(result.Data);
+    }
+
+    /// <summary>
+    /// Deletes a {{EntityNameLower}}
+    /// </summary>
+    /// <param name="id">{{EntityName}} ID</param>
+    /// <returns>No content</returns>
+    [HttpDelete("{id}")]
+    [Authorize] // Add specific roles as needed: [Authorize(Roles = "Admin")]
+{{#HasCaching}}
+    [CacheEvict(KeyPatterns = new[] { "{{EntityNamePluralLower}}", "{{EntityNameLower}}_{id}", "{{EntityNamePluralLower}}_paged_*" })]
+{{/HasCaching}}
+{{#HasLogging}}
+    [Log(LogLevel.Warning, LogParameters = true)]
+{{/HasLogging}}
+{{#HasAudit}}
+    [LogAudit("DELETE", "{{EntityName}}", AuditParameters = new[] { "id" }, LogIpAddress = true)]
+{{/HasAudit}}
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete{{EntityName}}({{IdType}} id)
+    {
+        var result = await _{{EntityNameCamel}}Service.Delete{{EntityName}}Async(id);
+        
+        if (!result.IsSuccess)
+        {
+            if (result.Message?.Contains("not found") == true)
+                return NotFound(result.Message);
+            return StatusCode(StatusCodes.Status500InternalServerError, result.Message);
+        }
+            
+        return NoContent();
+    }
+
+{{#CustomActions}}
+    /// <summary>
+    /// {{Description}}
+    /// </summary>
+{{#Parameters}}
+    /// <param name="{{Name}}">{{Name}} parameter</param>
+{{/Parameters}}
+    /// <returns>{{Description}} result</returns>
+    [Http{{HttpMethod}}("{{Route}}")]
+{{#AddCaching}}
+    [Cache("{{CacheKeyPattern}}", ExpirationMinutes = 30{{#Parameters}}, KeyParameters = new[] { {{#.}}"{{Name}}"{{#HasNext}}, {{/HasNext}}{{/.}}{{/Parameters}})]
+{{/AddCaching}}
+{{#AddLogging}}
+    [Log(LogLevel.Information, LogExecutionTime = true)]
+{{/AddLogging}}
+{{#AddAudit}}
+    [LogAudit("{{HttpMethod}}", "{{EntityName}}")]
+{{/AddAudit}}
+    [ProducesResponseType(typeof({{#ReturnTypeTemplate}}{{ReturnTypeTemplate}}{{/ReturnTypeTemplate}}), StatusCodes.Status200OK)]
+{{#ReturnType}}
+{{#IsSingle}}
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+{{/IsSingle}}
+{{/ReturnType}}
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<{{#ReturnTypeTemplate}}{{ReturnTypeTemplate}}{{/ReturnTypeTemplate}}>> {{Name}}Async({{#Parameters}}{{#FromRoute}}[FromRoute] {{/FromRoute}}{{#FromQuery}}[FromQuery] {{/FromQuery}}{{#FromBody}}[FromBody] {{/FromBody}}{{Type}} {{Name}}{{#DefaultValue}} = {{DefaultValue}}{{/DefaultValue}}{{#HasNext}}, {{/HasNext}}{{/Parameters}}{{#AddPagination}}{{#Parameters}}, {{/Parameters}}[FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10{{/AddPagination}})
+    {
+        try
+        {
+{{#ReturnType}}
+{{#IsVoid}}
+            await _{{EntityNameCamel}}Service.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+            return NoContent();
+{{/IsVoid}}
+{{#IsSingle}}
+            var result = await _{{EntityNameCamel}}Service.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+            
+            if (!result.IsSuccess)
+                return BadRequest(result.Message);
+                
+            if (result.Data == null)
+                return NotFound();
+                
+            return Ok(result.Data);
+{{/IsSingle}}
+{{#IsList}}
+{{#AddPagination}}
+            var result = await _{{EntityNameCamel}}Service.{{Name}}Async({{#Parameters}}{{Name}}, {{/Parameters}}pageNumber, pageSize);
+{{/AddPagination}}
+{{^AddPagination}}
+            var result = await _{{EntityNameCamel}}Service.{{Name}}Async({{#Parameters}}{{Name}}{{#HasNext}}, {{/HasNext}}{{/Parameters}});
+{{/AddPagination}}
+            
+            if (!result.IsSuccess)
+                return BadRequest(result.Message);
+                
+            return Ok(result.Data);
+{{/IsList}}
+{{/ReturnType}}
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in {{Name}} for {{EntityName}}");
+            return StatusCode(500, "An error occurred while processing the request");
+        }
+    }
+
+{{/CustomActions}}
+}
